@@ -1,0 +1,178 @@
+import javax.swing.JFileChooser;
+
+import java.io.*;
+
+import java.security.MessageDigest;
+
+import java.util.Random;
+import java.util.zip.CheckedInputStream;
+import java.util.zip.Adler32;
+
+public class ShenCrypt {
+
+    public static void main(String[] args){
+        //_m refers to mask
+        //_o refers to original
+        //_e refers to encrypted
+        
+        //creation of a specific folder
+        File fb = new File("C:\\ShenronSplit"); 
+        fb.mkdirs(); 
+        
+        FileInputStream fis;
+        FileOutputStream fos;
+        FileOutputStream fos_m;
+        FileOutputStream fos_e;
+
+        String MD5_file = "";
+        String MD5_file2 = "";
+        int byteLu;
+        int compteur = 0;
+        File file_o = null;
+        boolean sumIsValid = false;
+
+        //file to be encrypted is chosen here
+        JFileChooser fileChooser = new JFileChooser();
+        if (fileChooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+            file_o= fileChooser.getSelectedFile();
+        }
+        
+        //creating the extension string concatenated with stars to reach a length of ten
+        String ext = getExtension(file_o);
+        while (ext.length() < 10) {
+            ext = ext + "*";
+        }
+        System.out.println(ext);
+
+        //creating mask and crypted file
+        //File file = new File(getName(file_o)+"_copy"+getExtension(file_o));
+        File file_m = new File("C:\\ShenronSplit\\" + getName(file_o) + "_mask" + ".ssmsk");
+        File file_e = new File("C:\\ShenronSplit\\" + getName(file_o) + "_crypted" + ".sscrpt");
+
+        //while(!sumIsValid){
+        try {
+            fis = new FileInputStream(file_o);
+            //fos = new FileOutputStream(file);
+            fos_m = new FileOutputStream(file_m);
+            fos_e = new FileOutputStream(file_e);
+
+            try {
+                System.out.print(file_o.length());
+                byte[] ByteTab = new byte[(int) file_o.length()+10];
+                byte[] ByteTab_m = maskByteTab((int) file_o.length()+10);
+
+                while ((byteLu = fis.read()) != -1) {
+                    ByteTab[compteur] = (byte) byteLu;
+                    compteur++;
+                }
+
+                for (int i = 0; i < 10; i++) {
+                    ByteTab[(int)file_o.length() + i] = ext.getBytes()[i];
+                }
+                byte[] ByteTab_e = encryptedByteTab(ByteTab, ByteTab_m);
+
+                //writing mask and crypted file
+                //fos.write(ByteTab);
+                fos_m.write(ByteTab_m);
+                fos_e.write(ByteTab_e);
+                System.out.print(file_e.length());
+                try {
+                    //file.createNewFile();
+                    file_m.createNewFile();
+                    file_e.createNewFile();
+                } catch (IOException e1) {
+                    // TODO Auto-generated catch block
+                    e1.printStackTrace();
+                }
+            } finally {
+                fis.close();
+                //fos.close();
+                fos_m.close();
+                fos_e.close();
+            }
+        }
+        catch(FileNotFoundException ef) {
+            System.out.println("fichier introuvable");
+        }
+        catch(IOException e) {
+            System.out.println(e+"erreur lors de la lecture du fichier");
+        }
+
+        //Check if MDChecksum of created documents are the same as input argument 
+        /*try {
+                MD5_file = getMD5Checksum(file.getName());
+                MD5_file2 = getMD5Checksum(file2.getName());
+                if(MD5_file.equals(MD5_file2)){sumIsValid=true;}
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }*/
+        //}
+    }
+
+    //extract name from a file
+    public static String getName(File file) {
+        return (file.getName() != null) ? file.getName().substring(0,file.getName().indexOf('.')) : "";
+    }
+
+    //extract extension from a file
+    public static String getExtension(File file) {
+        String nameFile_c = file.getName();
+        if (nameFile_c.lastIndexOf(".") > 0) {
+            return nameFile_c.substring(nameFile_c.lastIndexOf(".") + 1);
+        }
+        else {
+            return null;
+        }
+    }
+    
+    //Creates the byte tab for mask file
+    private static byte[] maskByteTab(int length) {
+        Random rand = new Random();
+        byte[] ByteTab_m = new byte[length];
+        /*for (int i=0; i<(int)file.length();i++){
+            int byte_m=(int)(Math.random()*256)-128;
+            ByteTab_m[i]=(byte) byte_m;
+        }*/
+        rand.nextBytes(ByteTab_m);
+        return ByteTab_m;
+    }
+
+    //Creates the byte tab for encrypted file
+    private static byte[] encryptedByteTab(byte[] bto, byte[] btm ) {
+        byte[] ByteTab_e=new byte[bto.length];
+        for (int i=0; i<(int)bto.length;i++){
+            int byte_e=bto[i]+btm[i];
+            ByteTab_e[i]=(byte) byte_e;
+        }
+        return ByteTab_e;
+    }
+
+
+    //MD5Checksum methods
+    public static byte[] createChecksum(String filename) throws Exception {
+        InputStream fis =  new FileInputStream(filename);
+
+        byte[] buffer = new byte[1024];
+        MessageDigest complete = MessageDigest.getInstance("MD5");
+        int numRead;
+        do {
+            numRead = fis.read(buffer);
+            if (numRead > 0) {
+                complete.update(buffer, 0, numRead);
+            }
+        } while (numRead != -1);
+        fis.close();
+        return complete.digest();
+    }
+
+    public static String getMD5Checksum(String filename) throws Exception {
+        byte[] b = createChecksum(filename);
+        String result = "";
+        for (int i=0; i < b.length; i++) {
+            result +=
+                Integer.toString( ( b[i] & 0xff ) + 0x100, 16).substring( 1 );
+        }
+        return result;
+    }
+}
